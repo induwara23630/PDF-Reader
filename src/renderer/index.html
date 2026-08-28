@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' blob:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple PDF Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- ---------------------------------------------------------- Toolbar -->
+      <header id="toolbar">
+        <div class="tb-group">
+          <button id="btn-sidebar" class="tb-btn" title="Toggle sidebar (Ctrl+B)" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 5v14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button id="btn-open" class="tb-btn" title="Open PDF (Ctrl+O)" aria-label="Open PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button id="btn-prev" class="tb-btn" title="Previous page" aria-label="Previous page" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <div class="page-box">
+            <input id="page-input" type="text" inputmode="numeric" value="–" aria-label="Current page" disabled />
+            <span class="page-total">/ <span id="page-count">–</span></span>
+          </div>
+          <button id="btn-next" class="tb-btn" title="Next page" aria-label="Next page" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button id="btn-zoom-out" class="tb-btn" title="Zoom out (Ctrl+-)" aria-label="Zoom out" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <input id="zoom-input" type="text" value="–" aria-label="Zoom level" disabled />
+          <button id="btn-zoom-in" class="tb-btn" title="Zoom in (Ctrl++)" aria-label="Zoom in" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button id="btn-fit-width" class="tb-btn text" title="Fit width" disabled>Fit&nbsp;Width</button>
+          <button id="btn-fit-page" class="tb-btn text" title="Fit page" disabled>Fit&nbsp;Page</button>
+        </div>
+
+        <div class="tb-spacer"></div>
+        <div id="doc-title" class="doc-title"></div>
+      </header>
+
+      <!-- ------------------------------------------------------------ Body -->
+      <div id="body">
+        <aside id="sidebar" aria-label="Page thumbnails">
+          <div id="thumbs"></div>
+        </aside>
+
+        <main id="viewer" tabindex="0">
+          <div id="pages"></div>
+
+          <!-- Welcome / empty state -->
+          <section id="welcome">
+            <div class="welcome-card">
+              <svg class="welcome-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 2v5h5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+              <h1>Simple PDF Viewer</h1>
+              <p>Open a PDF file, or drag one onto this window.</p>
+              <button id="welcome-open" class="primary-btn">Open PDF…</button>
+              <div id="recent-list" class="recent-list"></div>
+            </div>
+          </section>
+
+          <div id="drop-overlay"><div class="drop-inner">Drop PDF to open</div></div>
+        </main>
+      </div>
+    </div>
+
+    <script type="module" src="./viewer.js"></script>
+  </body>
+</html>

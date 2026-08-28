@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+src/renderer/vendor/
+*.log
+.DS_Store
+.claude/settings.local.json

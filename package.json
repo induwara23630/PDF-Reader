@@ -1,0 +1,53 @@
+{
+  "name": "simple-pdf-viewer",
+  "version": "1.0.0",
+  "description": "A clean, simple PDF viewer for reading existing PDF files.",
+  "author": "rusiruibandara",
+  "license": "MIT",
+  "main": "src/main/main.js",
+  "scripts": {
+    "copy-pdfjs": "node scripts/copy-pdfjs.js",
+    "prestart": "npm run copy-pdfjs",
+    "start": "electron .",
+    "predist": "npm run copy-pdfjs",
+    "dist": "electron-builder",
+    "predist:dir": "npm run copy-pdfjs",
+    "dist:dir": "electron-builder --dir"
+  },
+  "dependencies": {
+    "pdfjs-dist": "^4.10.38"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.rusiru.simplepdfviewer",
+    "productName": "Simple PDF Viewer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "!**/*.map"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "fileAssociations": [
+      {
+        "ext": "pdf",
+        "name": "PDF Document",
+        "role": "Viewer"
+      }
+    ]
+  }
+}
