@@ -57,9 +57,105 @@
           <button id="btn-fit-page" class="tb-btn text" title="Fit page" disabled>Fit&nbsp;Page</button>
         </div>
 
+        <div class="tb-sep"></div>
+
+        <!-- Mode toolbar: pick a tool, only that tool's UI appears. Same
+             actions are always in Tools ▸ … too, as a failsafe. Styled as
+             its own distinct pill (not a plain .tb-group) so it reads as a
+             toolbar in its own right, not more nav buttons. -->
+        <div class="mode-toolbar" role="toolbar" aria-label="Tools">
+          <span class="mode-toolbar-label">Tools</span>
+          <button id="mode-edit" class="tb-btn" title="Edit PDF — annotate, highlight, draw" aria-label="Edit PDF" aria-pressed="false" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 3v4h4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 19.5L10 15l4.5-4.5 3 3L13 18l-4.5 1.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="mode-create" class="tb-btn" title="Create PDF — merge PDFs and images" aria-label="Create PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h8l4 4v12H5z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 4v4h4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 13h6M12 10v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button id="mode-organize" class="tb-btn" title="Organize Pages — reorder or remove pages" aria-label="Organize Pages" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="11" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><rect x="9.5" y="6.5" width="11" height="14" rx="1" fill="#f4f4f5" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button id="mode-export" class="tb-btn" title="Export — Images, PDF, Word, Excel" aria-label="Export" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M12 3l-4 4M12 3l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+        </div>
+
         <div class="tb-spacer"></div>
         <div id="doc-title" class="doc-title"></div>
       </header>
+
+      <!-- ------------------------------------------------ Annotation toolbar -->
+      <div id="annot-toolbar" class="disabled" aria-label="Annotation tools">
+        <div class="tb-group">
+          <button class="tb-btn" data-tool="select" title="Select / move (Esc)" aria-label="Select">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3l14 8-6 1.5L11 19z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group">
+          <button class="tb-btn" data-tool="highlight" title="Highlight text" aria-label="Highlight">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h6" stroke="currentColor" stroke-width="2"/><path d="M14 4l6 6-8 8H6v-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="tb-btn glyph" data-tool="underline" title="Underline text" aria-label="Underline"><span>U̲</span></button>
+          <button class="tb-btn glyph" data-tool="strike" title="Strikethrough text" aria-label="Strikethrough"><span>S̶</span></button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group">
+          <button class="tb-btn" data-tool="pen" title="Pen / freehand" aria-label="Pen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l4-1 10-10-3-3L5 16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="rect" title="Rectangle" aria-label="Rectangle">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="6" width="16" height="12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="ellipse" title="Ellipse" aria-label="Ellipse">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="8" ry="6" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="line" title="Line" aria-label="Line">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L19 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="arrow" title="Arrow" aria-label="Arrow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19L19 5M19 5h-7M19 5v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group">
+          <button class="tb-btn glyph" data-tool="text" title="Text box" aria-label="Text box"><span>T</span></button>
+          <button class="tb-btn" data-tool="note" title="Sticky note" aria-label="Sticky note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v10H9l-4 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="eraser" title="Erase annotation" aria-label="Eraser">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17l-3-3 9-9 6 6-6 6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M6 17h12" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button class="tb-btn" data-tool="image" title="Insert image stamp" aria-label="Insert image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 17l6-6 4 4 3-3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group annot-style-wrap">
+          <button id="annot-style-btn" class="tb-btn" title="Colour &amp; style" aria-label="Colour and style">
+            <span id="annot-style-swatch" class="annot-swatch"></span>
+          </button>
+          <div id="annot-style" class="annot-style-pop"></div>
+        </div>
+        <div class="tb-sep"></div>
+        <div class="tb-group">
+          <button id="annot-undo" class="tb-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 0 1 0 10h-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button id="annot-redo" class="tb-btn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7l5 5-5 5M20 12H9a5 5 0 0 0 0 10h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="tb-spacer"></div>
+        <button id="annot-export" class="tb-btn text" title="Save a copy of the PDF with your annotations">Save Copy…</button>
+      </div>
+
+      <!-- File-changed-since-annotating notice -->
+      <div id="annot-banner" class="annot-banner" role="status" aria-hidden="true">
+        <span>This file has changed on disk since these annotations were made — they may no longer line up.</span>
+        <button id="annot-banner-dismiss" type="button" aria-label="Dismiss">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
 
       <!-- ------------------------------------------------------------ Body -->
       <div id="body">
@@ -76,7 +172,10 @@
               <svg class="welcome-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 2v5h5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
               <h1>Simple PDF Viewer</h1>
               <p>Open a PDF file, or drag one onto this window.</p>
-              <button id="welcome-open" class="primary-btn">Open PDF…</button>
+              <div class="welcome-btns">
+                <button id="welcome-open" class="primary-btn">Open PDF…</button>
+                <button id="welcome-create" class="ghost-btn">Create PDF…</button>
+              </div>
               <div id="recent-list" class="recent-list"></div>
             </div>
           </section>
@@ -84,8 +183,135 @@
           <div id="drop-overlay"><div class="drop-inner">Drop PDF to open</div></div>
         </main>
       </div>
+
+      <!-- Floating actions for a text selection -->
+      <div id="selection-bar" role="toolbar" aria-label="Selection actions" aria-hidden="true">
+        <button id="sel-copy" class="sel-btn" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9z M5 15V5h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+          <span class="sel-copy-label">Copy</span>
+        </button>
+        <span class="sel-div sel-annot-only"></span>
+        <button id="sel-highlight" class="sel-btn sel-annot-only" type="button" title="Highlight">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4l6 6-8 8H6v-6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        </button>
+        <button id="sel-underline" class="sel-btn sel-annot-only" type="button" title="Underline"><span>U̲</span></button>
+        <button id="sel-strike" class="sel-btn sel-annot-only" type="button" title="Strikethrough"><span>S̶</span></button>
+      </div>
+
+      <!-- ------------------------------------------------- Create PDF dialog -->
+      <div id="create-pdf" class="modal-backdrop" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cp-title">
+          <header class="modal-head">
+            <h2 id="cp-title">Create PDF</h2>
+            <button id="cp-close" class="modal-x" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+          </header>
+          <p class="modal-sub">Add PDF files and images in any mix, drag to reorder, then export one PDF.</p>
+
+          <div class="cp-toolbar">
+            <button id="cp-add" class="primary-btn" type="button">Add Files…</button>
+            <button id="cp-clear" class="ghost-btn" type="button" disabled>Clear</button>
+          </div>
+
+          <ol id="cp-list" class="cp-list" aria-label="Files to combine"></ol>
+          <div id="cp-empty" class="cp-empty">Drop PDFs or images here, or click “Add Files…”.</div>
+
+          <footer class="modal-foot">
+            <span id="cp-status" class="cp-status" role="status"></span>
+            <span class="cp-spacer"></span>
+            <button id="cp-cancel" class="ghost-btn" type="button">Cancel</button>
+            <button id="cp-export" class="primary-btn" type="button" disabled>Export PDF…</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- ----------------------------------------------------- Export dialog -->
+      <div id="export-dialog" class="modal-backdrop" aria-hidden="true">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ex-title">
+          <header class="modal-head">
+            <h2 id="ex-title">Export Document</h2>
+            <button id="ex-close" class="modal-x" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+          </header>
+          <p class="modal-sub">Images and PDF pages are exact. Word and Excel are a best-effort reconstruction from the PDF's text positions, not a structural copy — they read well on simple, single-column pages, and less reliably on complex layouts, multi-column text, or scanned pages.</p>
+
+          <div class="ex-body">
+            <div class="ex-section">
+              <div class="ex-label">Format</div>
+              <div class="ex-formats">
+                <button class="ex-format" data-format="images" type="button">Images</button>
+                <button class="ex-format" data-format="pdf" type="button">PDF</button>
+                <button class="ex-format" data-format="docx" type="button">Word</button>
+                <button class="ex-format" data-format="xlsx" type="button">Excel</button>
+              </div>
+            </div>
+
+            <div class="ex-section">
+              <div class="ex-label">Pages</div>
+              <div class="ex-pages">
+                <label><input type="radio" name="ex-range" value="all" checked /> All pages</label>
+                <label><input type="radio" name="ex-range" value="current" /> Current page</label>
+                <label class="ex-custom">
+                  <input type="radio" name="ex-range" value="custom" />
+                  <input id="ex-range-input" type="text" placeholder="e.g. 1-3, 5" disabled />
+                </label>
+              </div>
+            </div>
+
+            <div id="ex-image-opts" class="ex-section">
+              <div class="ex-label">Image options</div>
+              <div class="ex-image-row">
+                <select id="ex-image-format" aria-label="Image format">
+                  <option value="png">PNG</option>
+                  <option value="jpg">JPEG</option>
+                </select>
+                <select id="ex-image-scale" aria-label="Image resolution">
+                  <option value="1">Screen (1x)</option>
+                  <option value="2" selected>High (2x)</option>
+                  <option value="4">Print (4x)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <footer class="modal-foot">
+            <span id="ex-status" class="cp-status" role="status"></span>
+            <span class="cp-spacer"></span>
+            <button id="ex-cancel" class="ghost-btn" type="button">Cancel</button>
+            <button id="ex-export" class="primary-btn" type="button">Export…</button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- ------------------------------------------------- Organize Pages dialog -->
+      <div id="organize-pages" class="modal-backdrop" aria-hidden="true">
+        <div class="modal op-modal" role="dialog" aria-modal="true" aria-labelledby="op-title">
+          <header class="modal-head">
+            <h2 id="op-title">Organize Pages</h2>
+            <button id="op-close" class="modal-x" type="button" aria-label="Close">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+          </header>
+          <p class="modal-sub">Drag a page to reorder it. Removing a page here only affects the saved copy — nothing is deleted until you save.</p>
+
+          <div id="op-grid" class="op-grid" aria-label="Pages"></div>
+
+          <footer class="modal-foot">
+            <span id="op-status" class="cp-status" role="status"></span>
+            <span class="cp-spacer"></span>
+            <button id="op-cancel" class="ghost-btn" type="button">Cancel</button>
+            <button id="op-apply" class="primary-btn" type="button" disabled>Save As…</button>
+          </footer>
+        </div>
+      </div>
     </div>
 
+    <!-- JSZip ships only a UMD build (no ESM), so it's loaded classically and
+         referenced as `window.JSZip` from export/images.js. -->
+    <script src="./vendor/jszip.js"></script>
     <script type="module" src="./viewer.js"></script>
+    <script type="module" src="./create-pdf.js"></script>
   </body>
 </html>

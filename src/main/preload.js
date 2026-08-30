@@ -25,6 +25,31 @@ contextBridge.exposeInMainWorld('api', {
   getRecents: () => ipcRenderer.invoke('recents:get'),
   clearRecents: () => ipcRenderer.invoke('recents:clear'),
 
+  /** Pop the native text context menu (Copy / Select All). */
+  showContextMenu: (payload) => ipcRenderer.send('context-menu:show', payload),
+
+  /* --- Create PDF tool --- */
+  pickBuildInputs: () => ipcRenderer.invoke('build:pickInputs'),
+  readBytes: (filePath) => ipcRenderer.invoke('build:readBytes', filePath),
+  saveBuiltPdf: (payload) => ipcRenderer.invoke('build:save', payload),
+
+  /* --- Export dialog (images / PDF pages / Word / Excel) --- */
+  exportSave: (payload) => ipcRenderer.invoke('export:save', payload),
+  onExportDialog: (cb) => ipcRenderer.on('tools:export', () => cb()),
+
+  /* --- Mode toolbar failsafe (Tools menu) --- */
+  onEditModeToggle: (cb) => ipcRenderer.on('tools:edit-mode', () => cb()),
+  onOrganizePages: (cb) => ipcRenderer.on('tools:organize-pages', () => cb()),
+
+  /* --- Annotations --- */
+  annotsLoad: (pdfPath) => ipcRenderer.invoke('annots:load', pdfPath),
+  annotsSave: (pdfPath, payload) => ipcRenderer.invoke('annots:save', pdfPath, payload),
+  annotsApplyToOriginal: (pdfPath, data) => ipcRenderer.invoke('annots:applyToOriginal', pdfPath, data),
+  pickImage: () => ipcRenderer.invoke('annots:pickImage'),
+  onExportAnnotated: (cb) => ipcRenderer.on('annots:export', () => cb()),
+  onExportFlattened: (cb) => ipcRenderer.on('annots:export-flatten', () => cb()),
+  onApplyAnnotationsToOriginal: (cb) => ipcRenderer.on('annots:apply-original', () => cb()),
+
   /* --- main -> renderer events --- */
   onFileOpen: (cb) => {
     const listener = (_e, filePath) => cb(filePath);
@@ -36,4 +61,5 @@ contextBridge.exposeInMainWorld('api', {
   onZoom: (cb) => ipcRenderer.on('view:zoom', (_e, dir) => cb(dir)),
   onFit: (cb) => ipcRenderer.on('view:fit', (_e, mode) => cb(mode)),
   onToggleSidebar: (cb) => ipcRenderer.on('view:sidebar', () => cb()),
+  onCreatePdf: (cb) => ipcRenderer.on('tools:create-pdf', () => cb()),
 });

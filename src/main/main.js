@@ -4,8 +4,12 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol } = require('
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const crypto = require('crypto');
 
 const RECENTS_FILE = () => path.join(app.getPath('userData'), 'recent.json');
+const ANNOT_DIR = () => path.join(app.getPath('userData'), 'annotations');
+const annotSidecar = (pdfPath) =>
+  path.join(ANNOT_DIR(), `${crypto.createHash('sha1').update(path.resolve(pdfPath)).digest('hex')}.json`);
 const STATE_FILE = () => path.join(app.getPath('userData'), 'window-state.json');
 const MAX_RECENTS = 10;
 
@@ -216,9 +220,30 @@ async function buildMenuTemplate() {
           ],
         },
         { type: 'separator' },
+        {
+          label: 'Save Annotated Copy As…',
+          accelerator: 'CmdOrCtrl+Shift+S',
+          click: () => send('annots:export'),
+        },
+        {
+          label: 'Save Flattened Copy As…',
+          click: () => send('annots:export-flatten'),
+        },
+        {
+          label: 'Apply Annotations to Original…',
+          click: () => send('annots:apply-original'),
+        },
+        { type: 'separator' },
         { label: 'Close Document', accelerator: 'CmdOrCtrl+W', click: () => send('doc:close') },
         { type: 'separator' },
         { role: 'quit', label: process.platform === 'darwin' ? 'Quit' : 'Exit' },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'copy' },
+        { role: 'selectAll' },
       ],
     },
     {
@@ -240,6 +265,31 @@ async function buildMenuTemplate() {
               { role: 'reload' },
               { role: 'toggleDevTools' },
             ]),
+      ],
+    },
+    {
+      // Same 4 tools as the mode toolbar (viewer.js), same order — this menu
+      // is the failsafe if that toolbar is ever hard to reach.
+      label: 'Tools',
+      submenu: [
+        {
+          label: 'Edit PDF',
+          click: () => send('tools:edit-mode'),
+        },
+        {
+          label: 'Create PDF…',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => send('tools:create-pdf'),
+        },
+        {
+          label: 'Organize Pages…',
+          click: () => send('tools:organize-pages'),
+        },
+        {
+          label: 'Export…',
+          accelerator: 'CmdOrCtrl+E',
+          click: () => send('tools:export'),
+        },
       ],
     },
     {
@@ -352,6 +402,156 @@ ipcMain.handle('file:read', async (_e, filePath) => {
     return { error: err.message, path: filePath };
   }
 });
+ipcMain.on('context-menu:show', (e, payload = {}) => {
+  const win = BrowserWindow.fromWebContents(e.sender);
+  if (!win) return;
+  const menu = Menu.buildFromTemplate([
+    { role: 'copy', enabled: !!payload.hasSelection },
+    { type: 'separator' },
+    { role: 'selectAll' },
+  ]);
+  menu.popup({ window: win });
+});
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'];
+
+// Multi-select picker for the "Create PDF" tool: PDFs and images together.
+ipcMain.handle('build:pickInputs', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Add PDFs and images',
+    properties: ['openFile', 'multiSelections'],
+    filters: [
+      { name: 'PDF & Images', extensions: ['pdf', ...IMAGE_EXTS] },
+      { name: 'PDF Documents', extensions: ['pdf'] },
+      { name: 'Images', extensions: IMAGE_EXTS },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+  return res.canceled ? [] : res.filePaths;
+});
+
+// Read any file's raw bytes (used for builder inputs; does not touch recents).
+ipcMain.handle('build:readBytes', async (_e, filePath) => {
+  try {
+    const abs = path.resolve(filePath);
+    const buf = await fsp.readFile(abs);
+    return {
+      name: path.basename(abs),
+      data: new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength),
+    };
+  } catch (err) {
+    return { error: err.message, path: filePath };
+  }
+});
+
+// Write a freshly built PDF, add it to recents, and open it in the viewer.
+ipcMain.handle('build:save', async (_e, { defaultName, data } = {}) => {
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save PDF',
+    defaultPath: defaultName || 'Combined.pdf',
+    filters: [{ name: 'PDF Documents', extensions: ['pdf'] }],
+  });
+  if (res.canceled || !res.filePath) return { canceled: true };
+  try {
+    await fsp.writeFile(res.filePath, Buffer.from(data));
+    sendOpenFile(res.filePath);
+    return { path: res.filePath };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+// Generic "save this file I built" for the Export dialog (images/PDF pages/
+// Word/Excel) — unlike build:save, this never opens the result in the
+// viewer, since none of those formats (besides the PDF-subset case) are
+// PDFs this app can display.
+ipcMain.handle('export:save', async (_e, { defaultName, data, filterName, extensions } = {}) => {
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export',
+    defaultPath: defaultName || 'export',
+    filters: [{ name: filterName || 'File', extensions: extensions && extensions.length ? extensions : ['*'] }],
+  });
+  if (res.canceled || !res.filePath) return { canceled: true };
+  try {
+    await fsp.writeFile(res.filePath, Buffer.from(data));
+    return { path: res.filePath };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+// Multi-select picker restricted to images, for the annotation image-stamp tool.
+ipcMain.handle('annots:pickImage', async () => {
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: 'Insert Image',
+    properties: ['openFile'],
+    filters: [{ name: 'Images', extensions: IMAGE_EXTS }],
+  });
+  return res.canceled || !res.filePaths.length ? null : res.filePaths[0];
+});
+
+/* --- Annotations sidecar (userData/annotations/<sha1(path)>.json) --- */
+
+ipcMain.handle('annots:load', async (_e, pdfPath) => {
+  try {
+    const raw = await fsp.readFile(annotSidecar(pdfPath), 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || !Array.isArray(parsed.annotations)) return null;
+    // Flag when the PDF on disk has moved on since these annotations were
+    // captured, so the renderer can show a "file changed" banner.
+    let fileChanged = false;
+    try {
+      const st = await fsp.stat(path.resolve(pdfPath));
+      fileChanged = parsed.size !== st.size || parsed.mtimeMs !== st.mtimeMs;
+    } catch { /* file missing; nothing to compare against */ }
+    return { ...parsed, fileChanged };
+  } catch {
+    return null;
+  }
+});
+
+ipcMain.handle('annots:save', async (_e, pdfPath, payload = {}) => {
+  try {
+    await fsp.mkdir(ANNOT_DIR(), { recursive: true });
+    let size = payload.size || 0;
+    let mtimeMs = payload.mtimeMs || 0;
+    try {
+      const st = await fsp.stat(path.resolve(pdfPath));
+      size = st.size;
+      mtimeMs = st.mtimeMs;
+    } catch { /* file may be gone; keep what we were given */ }
+    const record = {
+      path: path.resolve(pdfPath),
+      size,
+      mtimeMs,
+      savedAt: Date.now(),
+      annotations: Array.isArray(payload.annotations) ? payload.annotations : [],
+    };
+    // Remove the sidecar entirely once there's nothing left to store.
+    if (!record.annotations.length) {
+      await fsp.rm(annotSidecar(pdfPath), { force: true });
+      return { ok: true, removed: true };
+    }
+    await fsp.writeFile(annotSidecar(pdfPath), JSON.stringify(record), 'utf8');
+    return { ok: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+// Overwrite the original PDF with an annotated copy built in the renderer.
+// Keeps a best-effort `.bak` of what was there immediately before.
+ipcMain.handle('annots:applyToOriginal', async (_e, pdfPath, data) => {
+  try {
+    const abs = path.resolve(pdfPath);
+    try { await fsp.copyFile(abs, `${abs}.bak`); } catch { /* best-effort */ }
+    await fsp.writeFile(abs, Buffer.from(data));
+    const st = await fsp.stat(abs);
+    return { ok: true, size: st.size, mtimeMs: st.mtimeMs };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
 ipcMain.handle('recents:get', () => readRecents());
 ipcMain.handle('recents:clear', async () => {
   await writeRecents([]);

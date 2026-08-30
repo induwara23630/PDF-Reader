@@ -1,6 +1,8 @@
-// Copies the PDF.js ESM build + worker out of node_modules into
-// src/renderer/vendor/ so the renderer can import them with a stable
-// relative path that also survives packaging into an asar archive.
+// Copies vendored ESM builds out of node_modules into src/renderer/vendor/ so
+// the renderer can import them with a stable relative path that also survives
+// packaging into an asar archive: the PDF.js build + worker, pdf-lib (used by
+// the "Create PDF" tool and PDF export), docx + xlsx (the Export dialog's
+// Word / Excel output), and JSZip (zipping multi-page image exports).
 const fs = require('fs');
 const path = require('path');
 
@@ -9,6 +11,14 @@ const srcDir = path.join(root, 'node_modules', 'pdfjs-dist', 'build');
 const outDir = path.join(root, 'src', 'renderer', 'vendor');
 
 const files = ['pdf.mjs', 'pdf.worker.mjs'];
+
+// [from (relative to repo root), to (relative to repo root)]
+const singleFiles = [
+  ['node_modules/pdf-lib/dist/pdf-lib.esm.min.js', 'src/renderer/vendor/pdf-lib.esm.js'],
+  ['node_modules/docx/dist/index.mjs', 'src/renderer/vendor/docx.esm.js'],
+  ['node_modules/xlsx/xlsx.mjs', 'src/renderer/vendor/xlsx.esm.js'],
+  ['node_modules/jszip/dist/jszip.js', 'src/renderer/vendor/jszip.js'], // UMD, not ESM — loaded as a classic <script>, see index.html
+];
 
 // pdfjs-dist ships fonts/cmaps referenced at runtime for some documents.
 const assetDirs = [
@@ -33,6 +43,13 @@ try {
     const to = path.join(outDir, f);
     fs.copyFileSync(from, to);
     console.log(`copied ${f}`);
+  }
+  for (const [from, to] of singleFiles) {
+    const absFrom = path.join(root, from);
+    const absTo = path.join(root, to);
+    fs.mkdirSync(path.dirname(absTo), { recursive: true });
+    fs.copyFileSync(absFrom, absTo);
+    console.log(`copied ${path.basename(to)}`);
   }
   for (const [from, to] of assetDirs) {
     const absFrom = path.join(root, from);

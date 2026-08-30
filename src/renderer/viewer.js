@@ -1,4 +1,8 @@
 import * as pdfjsLib from './vendor/pdf.mjs';
+import { annotations } from './annotations/index.js';
+import { exportDialog } from './export/index.js';
+import { organizePages } from './organize-pages.js';
+import { openModal as openCreatePdf } from './create-pdf.js';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdf.worker.mjs', import.meta.url).href;
 
@@ -42,6 +46,10 @@ const btn = {
   fitWidth: document.getElementById('btn-fit-width'),
   fitPage: document.getElementById('btn-fit-page'),
   welcomeOpen: document.getElementById('welcome-open'),
+  modeEdit: document.getElementById('mode-edit'),
+  modeCreate: document.getElementById('mode-create'),
+  modeOrganize: document.getElementById('mode-organize'),
+  modeExport: document.getElementById('mode-export'),
 };
 
 /* ------------------------------------------------------------------ *
@@ -55,6 +63,8 @@ let baseViewports = []; // [n-1] -> { width, height } at scale 1
 let scale = 1;
 let fitMode = null; // null | 'width' | 'page'
 let currentPage = 1;
+let currentPath = null; // absolute path of the open document, for annotations
+let editMode = false; // "Edit PDF" mode toolbar toggle — gates the annotation toolbar
 let loadToken = 0; // bumped whenever the open document changes; guards async races
 
 const pageDivs = []; // [n-1] -> HTMLElement (.page)
@@ -79,8 +89,10 @@ function availableHeight() {
 }
 
 function setControlsEnabled(on) {
-  [btn.prev, btn.next, btn.zoomIn, btn.zoomOut, btn.fitWidth, btn.fitPage, pageInput, zoomInput]
+  [btn.prev, btn.next, btn.zoomIn, btn.zoomOut, btn.fitWidth, btn.fitPage, pageInput, zoomInput,
+    btn.modeEdit, btn.modeOrganize, btn.modeExport]
     .forEach((el) => (el.disabled = !on));
+  if (!on) setEditMode(false); // no document left to edit
 }
 
 /* ------------------------------------------------------------------ *
@@ -93,10 +105,10 @@ async function openPath(filePath) {
     alert(`Could not open file:\n${res ? res.error : 'unknown error'}`);
     return;
   }
-  await loadDocument(res.data, res.name);
+  await loadDocument(res.data, res.name, res.path || filePath);
 }
 
-async function loadDocument(data, name) {
+async function loadDocument(data, name, filePath) {
   await closeDocument();
   const token = ++loadToken;
 
@@ -120,6 +132,7 @@ async function loadDocument(data, name) {
 
   pdfDoc = doc;
   numPages = doc.numPages;
+  currentPath = filePath || null;
   docTitleEl.textContent = name || '';
   document.title = name ? `${name} — Simple PDF Viewer` : 'Simple PDF Viewer';
 
@@ -129,6 +142,7 @@ async function loadDocument(data, name) {
 
   app.classList.remove('no-doc');
   setControlsEnabled(true);
+  annotations.setEnabled(true);
   pageCountEl.textContent = String(numPages);
 
   currentPage = 1;
@@ -137,6 +151,8 @@ async function loadDocument(data, name) {
 
   buildPageContainers();
   buildThumbContainers();
+  await annotations.setDocument(currentPath);
+  if (token !== loadToken) return;
   updatePageUI();
   updateZoomUI();
   updateFitButtons();
@@ -168,10 +184,13 @@ async function fetchViewports(token) {
 
 async function closeDocument() {
   loadToken++;
+  await annotations.closeDocument();
+  currentPath = null;
   if (thumbObserver) thumbObserver.disconnect();
 
   for (const st of pageState) {
     if (st && st.renderTask) try { st.renderTask.cancel(); } catch { /* noop */ }
+    if (st && st.textLayer) try { st.textLayer.cancel(); } catch { /* noop */ }
   }
   for (const st of thumbState) {
     if (st && st.renderTask) try { st.renderTask.cancel(); } catch { /* noop */ }
@@ -191,6 +210,7 @@ async function closeDocument() {
 
   app.classList.add('no-doc');
   setControlsEnabled(false);
+  annotations.setEnabled(false);
   docTitleEl.textContent = '';
   document.title = 'Simple PDF Viewer';
   pageInput.value = '–';
@@ -225,7 +245,7 @@ function buildPageContainers() {
     div.appendChild(placeholder(n));
     frag.appendChild(div);
     pageDivs.push(div);
-    pageState.push({ rendered: false, renderTask: null, canvas: null });
+    pageState.push({ rendered: false, renderTask: null, canvas: null, textLayer: null });
   }
   pagesEl.appendChild(frag);
 }
@@ -243,12 +263,16 @@ function relayoutPages() {
     const div = pageDivs[n - 1];
     div.style.width = `${Math.floor(w)}px`;
     div.style.height = `${Math.floor(h)}px`;
+    // The text layer positions its spans with calc(var(--scale-factor) * …),
+    // so updating this keeps selectable text aligned during a zoom transient.
+    div.style.setProperty('--scale-factor', String(scale));
     const st = pageState[n - 1];
     if (st.canvas) {
       st.canvas.style.width = `${Math.floor(w)}px`;
       st.canvas.style.height = `${Math.floor(h)}px`;
     }
   }
+  annotations.reflow();
 }
 
 /* ------------------------------------------------------------------ *
@@ -318,9 +342,12 @@ async function renderPage(n) {
     await task.promise;
     if (myToken !== loadToken) return;
     const div = pageDivs[n - 1];
+    div.style.setProperty('--scale-factor', String(scale));
     div.replaceChildren(canvas);
     st.canvas = canvas;
     st.rendered = true;
+    await renderTextLayer(n, page, vp, div, myToken);
+    if (myToken === loadToken) annotations.mountLayer(n, div, baseViewports[n - 1] || { width: vp.width, height: vp.height });
   } catch (err) {
     if (err && err.name !== 'RenderingCancelledException') {
       console.warn(`render page ${n} failed:`, err);
@@ -331,12 +358,54 @@ async function renderPage(n) {
   }
 }
 
+// A transparent, selectable text layer positioned over the page canvas.
+async function renderTextLayer(n, page, viewport, pageDiv, token) {
+  const st = pageState[n - 1];
+  const tlDiv = document.createElement('div');
+  tlDiv.className = 'textLayer';
+
+  const tl = new pdfjsLib.TextLayer({
+    textContentSource: page.streamTextContent({ includeMarkedContent: true }),
+    container: tlDiv,
+    viewport,
+  });
+  st.textLayer = tl;
+
+  try {
+    await tl.render();
+  } catch {
+    return; // cancelled or failed — the page stays canvas-only
+  }
+  if (token !== loadToken || st.textLayer !== tl || !pageDiv.isConnected) {
+    tl.cancel();
+    return;
+  }
+  const eoc = document.createElement('div');
+  eoc.className = 'endOfContent';
+  tlDiv.appendChild(eoc);
+  tlDiv.addEventListener('pointerdown', (e) => {
+    if (e.button === 0) tlDiv.classList.add('selecting');
+  });
+  // A secondary-button press must not move the caret / drop an existing
+  // selection before our context menu opens.
+  tlDiv.addEventListener('mousedown', (e) => {
+    if (e.button === 2 && !window.getSelection().isCollapsed) e.preventDefault();
+  });
+  tlDiv.addEventListener('contextmenu', onTextLayerContextMenu);
+  pageDiv.appendChild(tlDiv);
+}
+
 function releasePage(n) {
   const st = pageState[n - 1];
   if (!st) return;
+  annotations.unmountLayer(n);
   if (st.renderTask) {
     try { st.renderTask.cancel(); } catch { /* noop */ }
     st.renderTask = null;
+  }
+  if (st.textLayer) {
+    try { st.textLayer.cancel(); } catch { /* noop */ }
+    st.textLayer = null;
   }
   if (st.rendered || st.canvas) {
     pageDivs[n - 1].replaceChildren(placeholder(n));
@@ -677,7 +746,10 @@ viewerEl.addEventListener('scroll', () => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.target instanceof HTMLInputElement || !pdfDoc) return;
+  if (!pdfDoc) return;
+  const el = e.target;
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement ||
+    (el instanceof HTMLElement && el.isContentEditable)) return;
   if (e.ctrlKey || e.metaKey) {
     if (e.key === '=' || e.key === '+') { e.preventDefault(); setZoom('in'); }
     else if (e.key === '-') { e.preventDefault(); setZoom('out'); }
@@ -761,6 +833,122 @@ const viewerRO = new ResizeObserver(() => {
 viewerRO.observe(viewerEl);
 
 /* ------------------------------------------------------------------ *
+ *  Text selection — floating action bar                               *
+ * ------------------------------------------------------------------ */
+
+const selBar = document.getElementById('selection-bar');
+const selCopyBtn = document.getElementById('sel-copy');
+const selCopyLabel = selCopyBtn.querySelector('.sel-copy-label');
+let selDebounce = 0;
+
+function selectionInsideTextLayer() {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+  if (!sel.toString().trim()) return null;
+  const focus = sel.focusNode;
+  const el = focus && (focus.nodeType === 1 ? focus : focus.parentElement);
+  if (!el || !el.closest || !el.closest('.textLayer')) return null;
+  return sel;
+}
+
+function positionSelBar() {
+  const sel = selectionInsideTextLayer();
+  if (!sel) return hideSelBar();
+  const rect = sel.getRangeAt(0).getBoundingClientRect();
+  if (!rect || (rect.width === 0 && rect.height === 0)) return hideSelBar();
+  // Keep it within the viewer's horizontal bounds and below the toolbar.
+  const vr = viewerEl.getBoundingClientRect();
+  const x = clamp(rect.left + rect.width / 2, vr.left + 80, vr.right - 80);
+  const y = Math.max(rect.top, vr.top + 8);
+  selBar.style.left = `${x}px`;
+  selBar.style.top = `${y}px`;
+  selBar.classList.add('visible');
+  selBar.setAttribute('aria-hidden', 'false');
+}
+
+function hideSelBar() {
+  if (!selBar.classList.contains('visible')) return;
+  selBar.classList.remove('visible');
+  selBar.setAttribute('aria-hidden', 'true');
+  selCopyBtn.classList.remove('done');
+  selCopyLabel.textContent = 'Copy';
+}
+
+document.addEventListener('selectionchange', () => {
+  clearTimeout(selDebounce);
+  selDebounce = setTimeout(positionSelBar, 100);
+});
+
+// While dragging a selection, `.selecting` lets the text layer capture the
+// pointer past the last line (see .endOfContent in the CSS); clear it on release.
+document.addEventListener('pointerup', () => {
+  for (const el of document.querySelectorAll('.textLayer.selecting')) {
+    el.classList.remove('selecting');
+  }
+});
+
+// Reposition (not just hide) while scrolling so the bar tracks the selection.
+viewerEl.addEventListener('scroll', () => {
+  if (selBar.classList.contains('visible')) positionSelBar();
+});
+
+// Don't let interacting with the bar collapse the selection.
+selBar.addEventListener('mousedown', (e) => e.preventDefault());
+
+async function copySelection() {
+  const sel = selectionInsideTextLayer();
+  const text = sel ? sel.toString() : '';
+  if (!text) return;
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch {
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+  }
+  selCopyLabel.textContent = ok ? 'Copied' : 'Press Ctrl+C';
+  selCopyBtn.classList.toggle('done', ok);
+  setTimeout(hideSelBar, ok ? 650 : 1200);
+}
+
+selCopyBtn.addEventListener('click', copySelection);
+
+// Text-markup shortcuts on the floating selection bar.
+for (const [id, type] of [
+  ['sel-highlight', 'highlight'],
+  ['sel-underline', 'underline'],
+  ['sel-strike', 'strike'],
+]) {
+  const b = document.getElementById(id);
+  if (b) b.addEventListener('click', () => {
+    annotations.markupFromSelection(type);
+    hideSelBar();
+  });
+}
+
+// Native right-click menu over the text layer. Copy is enabled only when
+// there is a live selection; the press handler above keeps that selection
+// alive across the click.
+function onTextLayerContextMenu(e) {
+  e.preventDefault();
+  const sel = selectionInsideTextLayer();
+  window.api.showContextMenu({ hasSelection: !!sel });
+  if (sel) positionSelBar();
+}
+
+// Explicit Ctrl/Cmd+C anywhere in the document copies the current selection
+// (Chromium already does this by default; this also refreshes the bar state).
+window.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C')) {
+    if (selectionInsideTextLayer()) {
+      selCopyLabel.textContent = 'Copied';
+      selCopyBtn.classList.add('done');
+      setTimeout(hideSelBar, 650);
+    }
+  }
+});
+
+/* ------------------------------------------------------------------ *
  *  IPC wiring (menu + main-process events)                            *
  * ------------------------------------------------------------------ */
 
@@ -776,5 +964,50 @@ window.api.onToggleSidebar(() => toggleSidebar());
  * ------------------------------------------------------------------ */
 
 app.classList.add('no-doc');
+annotations.init({
+  getScale: () => scale,
+  getPageDivs: () => pageDivs,
+  getBaseViewports: () => baseViewports,
+});
+annotations.setEnabled(false);
+// After annotations.init(), which wires up tools.js's DOM refs — setEditMode
+// (called by setControlsEnabled) reaches into those via exitEditMode().
 setControlsEnabled(false);
+window.api.onExportAnnotated(() => annotations.export());
+window.api.onExportFlattened(() => annotations.export('flatten'));
+window.api.onApplyAnnotationsToOriginal(() => annotations.applyToOriginal());
+
+exportDialog.init({
+  getPdfDoc: () => pdfDoc,
+  getCurrentPath: () => currentPath,
+  getNumPages: () => numPages,
+  getCurrentPage: () => currentPage,
+});
+window.api.onExportDialog(() => exportDialog.open());
+
+organizePages.init({
+  getPdfDoc: () => pdfDoc,
+  getCurrentPath: () => currentPath,
+});
+window.api.onOrganizePages(() => organizePages.open());
+
+/* ------------------------------------------------------------------ *
+ *  Mode toolbar — pick a tool, only that tool's UI appears            *
+ * ------------------------------------------------------------------ */
+
+function setEditMode(on) {
+  editMode = on && !!pdfDoc;
+  app.classList.toggle('edit-mode', editMode);
+  btn.modeEdit.classList.toggle('active', editMode);
+  btn.modeEdit.setAttribute('aria-pressed', String(editMode));
+  if (!editMode) annotations.exitEditMode();
+}
+
+btn.modeEdit.addEventListener('click', () => setEditMode(!editMode));
+btn.modeCreate.addEventListener('click', () => openCreatePdf());
+btn.modeOrganize.addEventListener('click', () => organizePages.open());
+btn.modeExport.addEventListener('click', () => exportDialog.open());
+
+window.api.onEditModeToggle(() => setEditMode(!editMode));
+
 refreshRecentList();

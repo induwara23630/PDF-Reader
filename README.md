@@ -1,7 +1,8 @@
 # Simple PDF Viewer
 
 A clean, minimal desktop app for reading existing PDF files — built with
-[Electron](https://www.electronjs.org/) and [Mozilla PDF.js](https://mozilla.github.io/pdf.js/).
+[Electron](https://www.electronjs.org/), [Mozilla PDF.js](https://mozilla.github.io/pdf.js/),
+and [pdf-lib](https://pdf-lib.js.org/).
 
 ## Features
 
@@ -15,6 +16,21 @@ A clean, minimal desktop app for reading existing PDF files — built with
   toward the cursor, `Ctrl+0` actual size
 - **Fit Width** / **Fit Page**
 - Collapsible thumbnail sidebar (`Ctrl+B`) with active-page highlight
+- **Text selection** — select text in PDFs that contain it; a floating **Copy**
+  bar appears above the selection, and `Ctrl/Cmd+C` / **Edit → Copy** also work
+- **Annotations** — a second toolbar row (visible with a document open) with
+  Select/move/resize/delete, **Highlight / Underline / Strikethrough** (from the
+  toolbar or the floating selection bar), **Pen**, **Rectangle**, **Ellipse**,
+  **Line**, **Arrow**, **Text box**, **Sticky note**, and **Eraser**, plus a
+  colour/stroke/opacity/font-size style popover and undo/redo (`Ctrl/Cmd+Z`,
+  `Ctrl/Cmd+Shift+Z`). Annotations autosave to a sidecar file in the app's
+  `userData` folder (keyed by the PDF's path) and reload automatically.
+  **File → Save Annotated Copy As…** (`Ctrl/Cmd+Shift+S`) writes a flattened copy
+  with the annotations baked into the page content.
+- **Create PDF** (**Tools → Create PDF…**, `Ctrl/Cmd+Shift+N`) — combine any mix
+  of PDF files and images (PNG/JPEG/WebP/GIF/BMP) into one document; add via the
+  file picker or drag-and-drop, reorder rows by dragging or the ▲/▼ buttons, then
+  export. The result opens in the viewer.
 - Remembers window size/position
 
 ## Requirements
@@ -28,9 +44,10 @@ npm install
 npm start
 ```
 
-`npm start` first copies the PDF.js runtime (`pdf.mjs`, `pdf.worker.mjs`, cmaps,
-standard fonts) from `node_modules` into `src/renderer/vendor/` via
-`scripts/copy-pdfjs.js`, then launches Electron.
+`npm start` first copies the vendored runtimes (PDF.js — `pdf.mjs`,
+`pdf.worker.mjs`, cmaps, standard fonts — plus `pdf-lib.esm.js`) from
+`node_modules` into `src/renderer/vendor/` via `scripts/copy-pdfjs.js`, then
+launches Electron.
 
 ## Build a Windows installer
 
@@ -54,10 +71,16 @@ To ship a custom app icon, add `assets/icon.ico` (256×256) and set
 | `src/main/preload.js` | `contextBridge` — exposes a minimal `window.api` |
 | `src/renderer/index.html` | Toolbar + sidebar + scroll viewport shell |
 | `src/renderer/styles.css` | Acrobat-like light theme (colors are CSS variables) |
-| `src/renderer/viewer.js` | PDF.js integration: rendering, zoom, navigation, thumbnails |
-| `scripts/copy-pdfjs.js` | Copies the PDF.js runtime into `src/renderer/vendor/` |
+| `src/renderer/viewer.js` | PDF.js integration: rendering, zoom, navigation, thumbnails, text selection |
+| `src/renderer/annotations/` | Annotation store (model + undo/redo + autosave), per-page SVG/HTML render layer, toolbar/tools, and pdf-lib flatten export |
+| `src/renderer/create-pdf.js` | "Create PDF" tool: the combine dialog and pdf-lib merge/image logic |
+| `scripts/copy-pdfjs.js` | Copies the PDF.js + pdf-lib runtimes into `src/renderer/vendor/` |
 
 ## Not included (yet)
 
-Text search/selection, annotations, printing, form filling, editing. The render
-pipeline leaves room to add a PDF.js text layer for search later.
+In-document find, printing, form filling, page-level editing
+(rotate/delete/reorder pages of an open document), and OCR for scanned/image-only
+PDFs (text selection needs the PDF to already contain text). The per-page text
+layer is a natural anchor for adding find next. Annotation export is
+flatten-only for now — real PDF annotation objects (re-editable in
+Acrobat/Preview) are a later phase.
