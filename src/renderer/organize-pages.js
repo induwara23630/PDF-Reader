@@ -6,7 +6,7 @@
 // (deps.getPdfDoc()) — no extra parse. The actual rebuild, on Save, re-reads
 // fresh bytes and uses pdf-lib's copyPages in the chosen order.
 
-import { PDFDocument } from './vendor/pdf-lib.esm.js';
+import { loadPdfLib } from './vendor-lazy.js';
 
 const THUMB_WIDTH = 140; // CSS px, matches .op-thumb's rendered size closely enough
 
@@ -208,6 +208,7 @@ class OrganizePages {
     try {
       const fresh = await window.api.readBytes(path);
       if (!fresh || fresh.error) throw new Error(fresh ? fresh.error : 'could not read PDF');
+      const { PDFDocument } = await loadPdfLib();
       const src = await PDFDocument.load(fresh.data, { ignoreEncryption: true });
       const out = await PDFDocument.create();
       const pages = await out.copyPages(src, this.order.map((n) => n - 1));

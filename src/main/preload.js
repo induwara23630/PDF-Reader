@@ -2,6 +2,24 @@
 
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
+// Set the theme attribute before the page paints, so there's no light flash
+// on a dark-mode launch. main.js passes the resolved theme via additionalArguments.
+{
+  const arg = process.argv.find((a) => a.startsWith('--start-theme='));
+  const startTheme = arg ? arg.slice('--start-theme='.length) : null;
+  if (startTheme) {
+    const set = () => {
+      try {
+        document.documentElement.dataset.theme = startTheme;
+      } catch {
+        /* ignore */
+      }
+    };
+    set();
+    document.addEventListener('DOMContentLoaded', set);
+  }
+}
+
 /**
  * Safe, minimal surface exposed to the renderer as `window.api`.
  * No Node primitives leak across the bridge.
@@ -22,8 +40,35 @@ contextBridge.exposeInMainWorld('api', {
     }
   },
 
+  /* --- Theme (light / dark / follow-OS) --- */
+  getTheme: () => ipcRenderer.invoke('theme:get'),
+  setTheme: (src) => ipcRenderer.invoke('theme:set', src),
+  onThemeChanged: (cb) => ipcRenderer.on('theme:changed', (_e, info) => cb(info)),
+
   getRecents: () => ipcRenderer.invoke('recents:get'),
   clearRecents: () => ipcRenderer.invoke('recents:clear'),
+
+  /** Open a PDF as a new tab in this same window (used when this tab already
+      has a document open and receives another via drag-and-drop). */
+  openInThisWindow: (filePath) => ipcRenderer.send('window:openTab', filePath),
+
+  /** Open a PDF in a brand-new window. */
+  openInNewWindow: (filePath) => ipcRenderer.invoke('window:openNew', filePath),
+
+  /* --- Sleeping-tab support (viewer <-> main) --- */
+  reportViewState: (state) => ipcRenderer.send('tab:view-state', state),
+  onFlush: (cb) => ipcRenderer.on('tab:flush', () => cb()),
+  onRestoreView: (cb) => ipcRenderer.on('view:restore', (_e, state) => cb(state)),
+
+  /* --- Tab strip (chrome.html) --- */
+  onTabs: (cb) => ipcRenderer.on('chrome:tabs', (_e, tabs) => cb(tabs)),
+  newTab: () => ipcRenderer.send('tab:new'),
+  activateTab: (id) => ipcRenderer.send('tab:activate', id),
+  closeTab: (id) => ipcRenderer.send('tab:close', id),
+  reorderTab: (id, index) => ipcRenderer.send('tab:reorder', id, index),
+  tabDragStart: () => ipcRenderer.send('tab:drag-start'),
+  tabDragEnd: () => ipcRenderer.send('tab:drag-end'),
+  detachTab: (id, point) => ipcRenderer.send('tab:detach', id, point),
 
   /** Pop the native text context menu (Copy / Select All). */
   showContextMenu: (payload) => ipcRenderer.send('context-menu:show', payload),
@@ -57,7 +102,6 @@ contextBridge.exposeInMainWorld('api', {
     return () => ipcRenderer.removeListener('file:open', listener);
   },
   onRecentsChanged: (cb) => ipcRenderer.on('recents:changed', (_e, list) => cb(list)),
-  onCloseDoc: (cb) => ipcRenderer.on('doc:close', () => cb()),
   onZoom: (cb) => ipcRenderer.on('view:zoom', (_e, dir) => cb(dir)),
   onFit: (cb) => ipcRenderer.on('view:fit', (_e, mode) => cb(mode)),
   onToggleSidebar: (cb) => ipcRenderer.on('view:sidebar', () => cb()),

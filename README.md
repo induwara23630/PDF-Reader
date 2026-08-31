@@ -1,4 +1,4 @@
-# Simple PDF Viewer
+# BPDF Reader
 
 A clean, minimal desktop app for reading existing PDF files — built with
 [Electron](https://www.electronjs.org/), [Mozilla PDF.js](https://mozilla.github.io/pdf.js/),
@@ -31,6 +31,16 @@ and [pdf-lib](https://pdf-lib.js.org/).
   of PDF files and images (PNG/JPEG/WebP/GIF/BMP) into one document; add via the
   file picker or drag-and-drop, reorder rows by dragging or the ▲/▼ buttons, then
   export. The result opens in the viewer.
+- **Tabs** — PDFs open as tabs in one window (like a browser). **File → New
+  Tab** (`Ctrl/Cmd+T`), `Ctrl/Cmd+W` closes the active tab, `Ctrl/Cmd+Tab`
+  cycles. Drag a tab **down off the strip** to pop it into its own window, or
+  drag it **onto another window's tab strip** to merge it there — the tab
+  keeps its exact state (scroll, zoom, annotations) across the move.
+  **File → New Window** (`Ctrl/Cmd+N`) opens an empty one. A background tab
+  left untouched for a while is put to sleep (its process is freed) and
+  reloads where you left off when you click it.
+- **Light / dark theme** — follows the Windows setting by default; override
+  from the toolbar's theme button or **View → Theme**.
 - Remembers window size/position
 
 ## Requirements
@@ -58,10 +68,13 @@ npm run dist:dir    # unpacked build in dist/win-unpacked/ (fast, for testing)
 
 `electron-builder` is configured (in `package.json` → `build`) to also register
 the app as a `.pdf` file handler; after installing, pick it via Windows
-*Settings → Default apps* or *Open with*.
+*Settings → Default apps* or *Open with*. See `docs/distribution.md` for the
+full walkthrough, including why the installer can't set itself as default
+automatically (Windows doesn't allow that — only the user can).
 
-To ship a custom app icon, add `assets/icon.ico` (256×256) and set
-`build.win.icon` in `package.json`.
+The app icon is `assets/icon.ico` (multi-resolution) / `assets/icon.png`
+(1024×1024 source), referenced via `build.win.icon` in `package.json`. To
+regenerate it after changing the design, see `docs/distribution.md`.
 
 ## Project layout
 

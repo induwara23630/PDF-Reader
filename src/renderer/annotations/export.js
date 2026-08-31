@@ -18,7 +18,23 @@
 // page's content onto another, repurposed here to build appearance streams
 // without hand-writing PDF content-stream operators.
 
-import { PDFDocument, StandardFonts, rgb, PDFString, PDFHexString, breakTextIntoLines } from '../vendor/pdf-lib.esm.js';
+// pdf-lib (~500 KB) is only needed when the user actually exports an
+// annotated copy — loaded on demand via vendor-lazy.js, not at tab boot.
+// These bindings are filled in by ensurePdfLib(), which every exported entry
+// point below awaits before touching them (the helper functions that use
+// them are only ever called from inside those awaited paths).
+import { loadPdfLib } from '../vendor-lazy.js';
+
+let PDFDocument, StandardFonts, rgb, PDFString, PDFHexString, breakTextIntoLines;
+let pdfLibReady = null;
+function ensurePdfLib() {
+  if (!pdfLibReady) {
+    pdfLibReady = loadPdfLib().then((m) => {
+      ({ PDFDocument, StandardFonts, rgb, PDFString, PDFHexString, breakTextIntoLines } = m);
+    });
+  }
+  return pdfLibReady;
+}
 
 function hexColor(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || '#000000');
@@ -252,6 +268,7 @@ async function drawAnnotationOn(page, a, ctx) {
  * ------------------------------------------------------------------ */
 
 export async function flattenToPdf(originalBytes, annotations) {
+  await ensurePdfLib();
   const doc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
   const pages = doc.getPages();
   const shared = { font: null };
@@ -368,6 +385,7 @@ function buildAnnotFields(a, bbox, apRef, H) {
 }
 
 export async function buildInteropPdf(originalBytes, annotations) {
+  await ensurePdfLib();
   const doc = await PDFDocument.load(originalBytes, { ignoreEncryption: true });
   const pages = doc.getPages();
   // A scratch document hosts one small page per annotation; each page is

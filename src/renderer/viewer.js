@@ -134,7 +134,7 @@ async function loadDocument(data, name, filePath) {
   numPages = doc.numPages;
   currentPath = filePath || null;
   docTitleEl.textContent = name || '';
-  document.title = name ? `${name} — Simple PDF Viewer` : 'Simple PDF Viewer';
+  document.title = name ? `${name} — BPDF Reader` : 'BPDF Reader';
 
   baseViewports = new Array(numPages);
   await fetchViewports(token);
@@ -159,6 +159,10 @@ async function loadDocument(data, name, filePath) {
 
   viewerEl.scrollTop = 0;
   refreshVisiblePages();
+
+  // A woken sleeping tab: jump back to where the reader was.
+  if (pendingRestore) applyRestore();
+  else reportViewState();
 }
 
 async function fetchViewports(token) {
@@ -212,7 +216,7 @@ async function closeDocument() {
   setControlsEnabled(false);
   annotations.setEnabled(false);
   docTitleEl.textContent = '';
-  document.title = 'Simple PDF Viewer';
+  document.title = 'BPDF Reader';
   pageInput.value = '–';
   pageCountEl.textContent = '–';
   zoomInput.value = '–';
@@ -599,6 +603,7 @@ function setZoom(target, cursor) {
   if (!pdfDoc) return;
   fitMode = null;
   updateFitButtons();
+  reportViewState();
   if (target === 'in') {
     applyScale(ZOOM_LEVELS.find((z) => z > scale + 1e-4) ?? MAX_SCALE, cursor);
   } else if (target === 'out') {
@@ -643,6 +648,7 @@ function setFit(mode) {
   fitMode = mode;
   updateFitButtons();
   applyFit();
+  reportViewState();
 }
 
 function updateFitButtons() {
@@ -742,6 +748,7 @@ viewerEl.addEventListener('scroll', () => {
     if (!pdfDoc) return;
     refreshVisiblePages();
     setCurrentPage(currentPageFromScroll());
+    reportViewState();
   });
 });
 
@@ -810,7 +817,11 @@ window.addEventListener('drop', (e) => {
     return;
   }
   const p = window.api.getPathForFile(file);
-  if (p) openPath(p);
+  if (!p) return;
+  // Dropping onto a tab that's already showing a document opens the drop as a
+  // new tab in this window, rather than replacing what's already open here.
+  if (pdfDoc) window.api.openInThisWindow(p);
+  else openPath(p);
 });
 
 /* ------------------------------------------------------------------ *
@@ -954,10 +965,113 @@ window.addEventListener('keydown', (e) => {
 
 window.api.onFileOpen((filePath) => openPath(filePath));
 window.api.onRecentsChanged(() => refreshRecentList());
-window.api.onCloseDoc(() => closeDocument());
 window.api.onZoom((dir) => setZoom(dir));
 window.api.onFit((mode) => setFit(mode));
 window.api.onToggleSidebar(() => toggleSidebar());
+
+/* ------------------------------------------------------------------ *
+ *  Sleeping-tab support                                               *
+ * ------------------------------------------------------------------ *
+ *  main.js discards an idle background tab's process to save RAM and  *
+ *  rebuilds it on re-activation. We feed it a lightweight snapshot of *
+ *  where the reader is + whether we're mid-edit (so it never discards *
+ *  unsaved work), and replay the snapshot when it reloads us.         */
+
+let reportTimer = 0;
+function reportViewState() {
+  if (reportTimer) return;
+  reportTimer = setTimeout(() => {
+    reportTimer = 0;
+    const modalOpen = !!document.querySelector('.modal-backdrop.open');
+    const busy = editMode || modalOpen || (pdfDoc && annotations.isDirty && annotations.isDirty());
+    if (!pdfDoc) {
+      window.api.reportViewState({ busy: !!busy });
+      return;
+    }
+    const range = viewerEl.scrollHeight - viewerEl.clientHeight;
+    window.api.reportViewState({
+      busy: !!busy,
+      page: currentPage,
+      scalePct: Math.round(scale * 100),
+      fitMode,
+      scrollRatio: range > 0 ? viewerEl.scrollTop / range : 0,
+    });
+  }, 400);
+}
+// Event-driven, plus a slow heartbeat so a purely idle tab still reports
+// "not busy" once a debounced annotation autosave finishes.
+setInterval(reportViewState, 10000);
+
+let pendingRestore = null;
+function applyRestore() {
+  const s = pendingRestore;
+  pendingRestore = null;
+  if (!s || !pdfDoc) return;
+  if (s.fitMode === 'width' || s.fitMode === 'page') setFit(s.fitMode);
+  else if (Number.isFinite(s.scalePct)) setZoom(s.scalePct / 100);
+  if (Number.isFinite(s.page)) goToPage(s.page);
+  if (Number.isFinite(s.scrollRatio)) {
+    const range = viewerEl.scrollHeight - viewerEl.clientHeight;
+    if (range > 0) viewerEl.scrollTop = clamp(s.scrollRatio * range, 0, range);
+  }
+  refreshVisiblePages();
+}
+window.api.onRestoreView((s) => {
+  pendingRestore = s;
+  if (pdfDoc) applyRestore();
+});
+window.api.onFlush(() => {
+  try { annotations.flush && annotations.flush(); } catch { /* ignore */ }
+});
+
+/* ------------------------------------------------------------------ *
+ *  Theme (light / dark, default = follow Windows)                     *
+ * ------------------------------------------------------------------ */
+
+const themeBtn = document.getElementById('btn-theme');
+const themeMenu = document.getElementById('theme-menu');
+const THEME_LABELS = { system: 'Match Windows', light: 'Light', dark: 'Dark' };
+
+// `info` is { source: 'system'|'light'|'dark', shouldUseDarkColors: boolean }
+// from main. The attribute drives the whole palette (see styles.css); the
+// popup shows which source is selected, not the resolved value.
+function applyTheme(info) {
+  document.documentElement.dataset.theme = info.shouldUseDarkColors ? 'dark' : 'light';
+  themeBtn.title = `Theme: ${THEME_LABELS[info.source] || info.source}`;
+  for (const opt of themeMenu.querySelectorAll('.theme-opt')) {
+    const on = opt.dataset.theme === info.source;
+    opt.classList.toggle('active', on);
+    opt.setAttribute('aria-checked', String(on));
+  }
+}
+
+function closeThemeMenu() {
+  themeMenu.classList.remove('open');
+  themeBtn.setAttribute('aria-expanded', 'false');
+}
+
+themeBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  const open = themeMenu.classList.toggle('open');
+  themeBtn.setAttribute('aria-expanded', String(open));
+});
+
+themeMenu.addEventListener('click', (e) => {
+  const opt = e.target.closest('.theme-opt');
+  if (!opt) return;
+  window.api.setTheme(opt.dataset.theme).then(applyTheme);
+  closeThemeMenu();
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.tb-theme-wrap')) closeThemeMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeThemeMenu();
+});
+
+window.api.getTheme().then(applyTheme);
+window.api.onThemeChanged(applyTheme); // OS toggled, or another window changed it
 
 /* ------------------------------------------------------------------ *
  *  Init                                                               *
@@ -1001,6 +1115,7 @@ function setEditMode(on) {
   btn.modeEdit.classList.toggle('active', editMode);
   btn.modeEdit.setAttribute('aria-pressed', String(editMode));
   if (!editMode) annotations.exitEditMode();
+  reportViewState(); // edit mode gates whether main may sleep this tab
 }
 
 btn.modeEdit.addEventListener('click', () => setEditMode(!editMode));

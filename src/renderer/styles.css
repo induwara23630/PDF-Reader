@@ -1,18 +1,6 @@
-:root {
-  --toolbar-h: 44px;
-  --sidebar-w: 190px;
-  --bg-canvas: #525659;
-  --bg-toolbar: #f4f4f5;
-  --bg-toolbar-border: #d6d6d9;
-  --bg-sidebar: #ebebed;
-  --text: #1f2023;
-  --text-dim: #6b6d72;
-  --accent: #2563eb;
-  --btn-hover: #e2e2e5;
-  --btn-active: #d2d2d6;
-  --page-shadow: rgba(0, 0, 0, 0.35);
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
+/* Design tokens + the light/dark palette live in tokens.css, shared with the
+   tab strip (chrome.css). */
+@import "./tokens.css";
 
 * {
   box-sizing: border-box;
@@ -106,7 +94,7 @@ body {
 }
 
 .tb-btn.active {
-  background: #dbe6ff;
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
@@ -117,8 +105,8 @@ body {
   align-items: center;
   gap: 2px;
   padding: 3px 6px 3px 9px;
-  background: #eef2ff;
-  border: 1px solid #c7d5fb;
+  background: var(--accent-softer);
+  border: 1px solid var(--accent-border);
   border-radius: 8px;
 }
 
@@ -133,7 +121,7 @@ body {
 }
 
 .mode-toolbar .tb-btn:hover:not(:disabled) {
-  background: #dbe6ff;
+  background: var(--accent-soft);
 }
 
 .mode-toolbar .tb-btn.active {
@@ -156,7 +144,7 @@ body {
   text-align: center;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 5px;
-  background: #fff;
+  background: var(--field-bg);
   color: var(--text);
   font-family: inherit;
   font-size: 12px;
@@ -174,7 +162,7 @@ body {
 
 #page-input:disabled,
 #zoom-input:disabled {
-  background: #ececed;
+  background: var(--field-disabled-bg);
   opacity: 0.6;
 }
 
@@ -386,7 +374,7 @@ body {
 .welcome-card {
   width: 100%;
   max-width: 420px;
-  background: #fafafa;
+  background: var(--welcome-card-bg);
   border-radius: 12px;
   padding: 32px 28px;
   text-align: center;
@@ -402,6 +390,12 @@ body {
 .welcome-card h1 {
   margin: 12px 0 4px;
   font-size: 20px;
+}
+
+.wm-b {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .welcome-card p {
@@ -552,13 +546,13 @@ body {
 }
 
 #viewer::-webkit-scrollbar-thumb {
-  background: #7c7f83;
+  background: var(--scrollbar-thumb);
   border: 4px solid var(--bg-canvas);
   border-radius: 8px;
 }
 
 #sidebar::-webkit-scrollbar-thumb {
-  background: #c2c2c7;
+  background: var(--scrollbar-thumb-sidebar);
   border: 4px solid var(--bg-sidebar);
   border-radius: 8px;
 }
@@ -572,7 +566,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay);
 }
 
 .modal-backdrop.open {
@@ -585,7 +579,7 @@ body {
   max-height: min(80vh, 720px);
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   border-radius: 12px;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.4);
@@ -649,7 +643,7 @@ body {
 .ghost-btn {
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   padding: 9px 16px;
   font-size: 14px;
@@ -706,7 +700,7 @@ body {
   margin-bottom: 6px;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 
 .cp-row.dragging {
@@ -838,7 +832,7 @@ body {
   padding: 9px 8px;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font-size: 13px;
   font-family: inherit;
@@ -852,7 +846,7 @@ body {
 .ex-format.active {
   border-color: var(--accent);
   color: var(--accent);
-  background: #eaf1ff;
+  background: var(--accent-tint);
   font-weight: 600;
 }
 
@@ -879,7 +873,7 @@ body {
   font-size: 13px;
   font-family: inherit;
   color: var(--text);
-  background: #fff;
+  background: var(--field-bg);
 }
 
 .ex-custom input[type='text']:disabled {
@@ -896,7 +890,7 @@ body {
   height: 30px;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--field-bg);
   color: var(--text);
   font-size: 13px;
   padding: 0 6px;
@@ -1087,7 +1081,7 @@ body {
   gap: 10px;
   width: 220px;
   padding: 12px;
-  background: #fff;
+  background: var(--surface-2);
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 8px;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.22);
@@ -1171,7 +1165,7 @@ body {
   height: 26px;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 5px;
-  background: #fff;
+  background: var(--field-bg);
   color: var(--text);
   font-size: 12px;
   padding: 0 4px;
@@ -1189,7 +1183,7 @@ body {
   padding: 0 6px;
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
   color: var(--text);
   font-size: 13px;
   line-height: 1;
@@ -1203,7 +1197,7 @@ body {
 .asp-toggle.active {
   border-color: var(--accent);
   color: var(--accent);
-  background: #eaf1ff;
+  background: var(--accent-tint);
 }
 
 .asp-toggle svg {
@@ -1396,7 +1390,63 @@ body {
   border: 1px solid var(--bg-toolbar-border);
   border-radius: 6px;
   background: #fffdf3;
+  color: #1f2023;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   resize: none;
   outline: none;
+}
+
+/* ============================================================= Theme picker */
+.tb-theme-wrap {
+  position: relative;
+}
+
+.theme-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  min-width: 156px;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--bg-toolbar-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+
+.theme-menu.open {
+  display: flex;
+}
+
+.theme-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 7px 10px 7px 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.theme-opt:hover {
+  background: var(--btn-hover);
+}
+
+.theme-opt.active::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 46%;
+  width: 5px;
+  height: 9px;
+  border: solid var(--accent);
+  border-width: 0 2px 2px 0;
+  transform: translateY(-50%) rotate(45deg);
 }

@@ -1,0 +1,182 @@
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+  /* Matches the viewer backdrop — only ever visible below the 36px bar while
+     a drag has this view expanded over the whole window (see main/layoutShell).
+     Not transparent: a transparent WebContentsView region is click-through on
+     Windows, which would break strip clicks. */
+  background: var(--bg-canvas);
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+/* Dim the (now window-sized) area below the bar while a tab is being dragged. */
+body.dragging::after {
+  content: "";
+  position: fixed;
+  inset: var(--tabbar-h) 0 0 0;
+  background: rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+#bar {
+  display: flex;
+  align-items: stretch;
+  height: var(--tabbar-h);
+  padding: 4px 4px 0;
+  gap: 2px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--bg-toolbar-border);
+}
+
+#tabstrip {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 60px;
+  max-width: 220px;
+  flex: 1 1 180px;
+  padding: 0 4px 0 10px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: default;
+  user-select: none;
+}
+
+.tab:hover {
+  background: var(--btn-hover);
+}
+
+.tab.active {
+  background: var(--surface);
+  border-color: var(--bg-toolbar-border);
+  color: var(--text);
+}
+
+.tab.dragging {
+  opacity: 0;
+}
+
+/* Discarded background tab — still listed, reloads on click. */
+.tab.sleeping .tab-title {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.tab-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: default;
+  opacity: 0.7;
+}
+
+.tab-close:hover {
+  background: var(--btn-active);
+  opacity: 1;
+}
+
+.tab-close svg {
+  width: 12px;
+  height: 12px;
+}
+
+#tab-new {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-bottom: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: default;
+}
+
+#tab-new:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+
+#tab-new svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Ghost tab that tracks the cursor during a drag. */
+#drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  height: calc(var(--tabbar-h) - 4px);
+  max-width: 220px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--bg-toolbar-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+#drag-ghost.visible {
+  display: flex;
+}
+
+/* When the drag has left the strip, hint that releasing will pop a window. */
+body.tearing #drag-ghost {
+  opacity: 0.85;
+  transform: scale(1.03);
+}

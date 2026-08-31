@@ -104,6 +104,16 @@ class Annotations {
     }
   }
 
+  /** True while there are unsaved annotation edits (autosave is debounced). */
+  isDirty() {
+    return store.dirty;
+  }
+
+  /** Force the debounced autosave to run now (used before a tab is discarded). */
+  flush() {
+    return this._flushSave();
+  }
+
   async closeDocument() {
     await this._flushSave();
     this.path = null;

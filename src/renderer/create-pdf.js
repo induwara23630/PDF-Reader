@@ -2,7 +2,7 @@
 // The list is reorderable (drag the row, or the ▲/▼ buttons); export writes
 // the result via a save dialog and opens it in the viewer.
 
-import { PDFDocument } from './vendor/pdf-lib.esm.js';
+import { loadPdfLib } from './vendor-lazy.js';
 
 /* ------------------------------------------------------------------ *
  *  DOM                                                                *
@@ -96,6 +96,7 @@ async function addEntry(name, bytes) {
   const entry = { id: nextId++, kind, name, bytes };
   if (kind === 'pdf') {
     try {
+      const { PDFDocument } = await loadPdfLib();
       const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
       entry.pageCount = doc.getPageCount();
     } catch (err) {
@@ -313,6 +314,7 @@ exportBtn.addEventListener('click', async () => {
 });
 
 async function buildPdf() {
+  const { PDFDocument } = await loadPdfLib();
   const out = await PDFDocument.create();
   for (const it of items) {
     if (it.kind === 'pdf') {

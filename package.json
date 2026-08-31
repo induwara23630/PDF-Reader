@@ -1,7 +1,7 @@
 {
-  "name": "simple-pdf-viewer",
+  "name": "bpdf-reader",
   "version": "1.0.0",
-  "description": "A clean, simple PDF viewer for reading existing PDF files.",
+  "description": "BPDF Reader — a clean, simple desktop app for reading PDF files.",
   "author": "rusiruibandara",
   "license": "MIT",
   "main": "src/main/main.js",
@@ -9,6 +9,7 @@
     "copy-pdfjs": "node scripts/copy-pdfjs.js",
     "prestart": "npm run copy-pdfjs",
     "start": "electron .",
+    "build-icon": "electron scripts/build-icon.js",
     "predist": "npm run copy-pdfjs",
     "dist": "electron-builder",
     "predist:dir": "npm run copy-pdfjs",
@@ -23,19 +24,22 @@
   },
   "devDependencies": {
     "electron": "^33.2.1",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.2"
   },
   "build": {
-    "appId": "com.rusiru.simplepdfviewer",
-    "productName": "Simple PDF Viewer",
+    "appId": "com.rusiru.bpdfreader",
+    "productName": "BPDF Reader",
     "directories": {
       "output": "dist"
     },
     "files": [
       "src/**/*",
+      "assets/icon.ico",
       "!**/*.map"
     ],
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -44,7 +48,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "perMachine": false
+      "perMachine": false,
+      "shortcutName": "BPDF Reader"
     },
     "fileAssociations": [
       {

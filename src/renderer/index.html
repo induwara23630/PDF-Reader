@@ -7,7 +7,7 @@
       content="default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' blob:"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Simple PDF Viewer</title>
+    <title>BPDF Reader</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -81,6 +81,24 @@
 
         <div class="tb-spacer"></div>
         <div id="doc-title" class="doc-title"></div>
+
+        <div class="tb-sep"></div>
+
+        <!-- Theme: follows Windows by default; this picks an explicit override.
+             Same three choices live in View ▸ Theme. -->
+        <div class="tb-group tb-theme-wrap">
+          <button id="btn-theme" class="tb-btn" title="Theme" aria-label="Theme" aria-haspopup="true" aria-expanded="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>
+            </svg>
+          </button>
+          <div id="theme-menu" class="theme-menu" role="menu" aria-label="Theme">
+            <button class="theme-opt" data-theme="system" role="menuitemradio" aria-checked="false">Match Windows</button>
+            <button class="theme-opt" data-theme="light" role="menuitemradio" aria-checked="false">Light</button>
+            <button class="theme-opt" data-theme="dark" role="menuitemradio" aria-checked="false">Dark</button>
+          </div>
+        </div>
       </header>
 
       <!-- ------------------------------------------------ Annotation toolbar -->
@@ -169,8 +187,11 @@
           <!-- Welcome / empty state -->
           <section id="welcome">
             <div class="welcome-card">
-              <svg class="welcome-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M15 2v5h5" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
-              <h1>Simple PDF Viewer</h1>
+              <svg class="welcome-icon" viewBox="0 0 64 64" aria-hidden="true">
+                <rect x="2" y="2" width="60" height="60" rx="14" style="fill:var(--accent)"/>
+                <text x="33" y="47" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="42" fill="#ffffff" text-anchor="middle">B</text>
+              </svg>
+              <h1 class="app-wordmark"><span class="wm-b">B</span>PDF Reader</h1>
               <p>Open a PDF file, or drag one onto this window.</p>
               <div class="welcome-btns">
                 <button id="welcome-open" class="primary-btn">Open PDF…</button>
@@ -308,9 +329,8 @@
       </div>
     </div>
 
-    <!-- JSZip ships only a UMD build (no ESM), so it's loaded classically and
-         referenced as `window.JSZip` from export/images.js. -->
-    <script src="./vendor/jszip.js"></script>
+    <!-- JSZip / pdf-lib are loaded on demand by src/renderer/vendor-lazy.js
+         (only Export / Create PDF / Organize / annotation-save need them). -->
     <script type="module" src="./viewer.js"></script>
     <script type="module" src="./create-pdf.js"></script>
   </body>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BPDF Reader</title>
+    <link rel="stylesheet" href="./chrome.css" />
+  </head>
+  <body>
+    <div id="bar">
+      <div id="tabstrip" role="tablist" aria-label="Open documents"></div>
+      <button id="tab-new" type="button" title="New tab (Ctrl+T)" aria-label="New tab">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <!-- Ghost image that follows the cursor while a tab is being dragged. -->
+    <div id="drag-ghost" aria-hidden="true"></div>
+
+    <script type="module" src="./chrome.js"></script>
+  </body>
+</html>

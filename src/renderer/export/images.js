@@ -4,6 +4,8 @@
 // exporters). A single page is returned as one file; more than one is
 // zipped so there's still just one thing to save.
 
+import { loadJSZip } from '../vendor-lazy.js';
+
 function mimeFor(format) {
   return format === 'jpg' || format === 'jpeg' ? 'image/jpeg' : 'image/png';
 }
@@ -43,8 +45,8 @@ export async function buildImages(pdfDoc, pageNumbers, opts = {}) {
 
   if (files.length === 1) return { single: files[0] };
 
-  if (!window.JSZip) throw new Error('JSZip library not loaded');
-  const zip = new window.JSZip();
+  const JSZip = await loadJSZip();
+  const zip = new JSZip();
   for (const f of files) zip.file(f.name, f.bytes);
   return { zip: await zip.generateAsync({ type: 'uint8array' }) };
 }
